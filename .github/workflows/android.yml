@@ -1,0 +1,49 @@
+name: Black Marlin Android Native Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Black Marlin Android (aarch64)
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Clone Repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust Toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-linux-android
+
+    - name: Set up Android NDK Environment
+      run: |
+        NDKV="27.2.12479018"
+        ANDROID_ROOT=/usr/local/lib/android
+        ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+        SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+        
+        echo "y" | $SDKMANAGER "ndk;$NDKV"
+        ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/$NDKV
+        
+        echo "ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT" >> $GITHUB_ENV
+
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk
+
+    - name: Compile Black Marlin for Android
+      run: |
+        export ANDROID_NDK_HOME=${{ env.ANDROID_NDK_ROOT }}
+        cargo ndk -t arm64-v8a build --release
+
+    - name: Upload Binary Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: BlackMarlin-Android-ARM64
+        path: target/aarch64-linux-android/release/blackmarlin
